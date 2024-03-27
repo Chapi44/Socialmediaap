@@ -1,4 +1,5 @@
 const User = require("../model/user"); // Ensure you import the User model
+const jwt = require('jsonwebtoken')
 const { attachCookiesToResponse, createTokenUser } = require("../utils");
 
 const register = async (req, res) => {
@@ -42,32 +43,52 @@ const register = async (req, res) => {
 };
 
 const signin = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
 
-    
-    
-
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(401).json({ error: "Invalid Credentials" });
-    }
-
-    const isPasswordCorrect = await user.comparePassword(password);
-
-    if (!isPasswordCorrect) {
-      return res.status(401).json({ error: "Incorrect password" });
-    }
-
-    const tokenUser = createTokenUser(user);
-    attachCookiesToResponse({ res, user: tokenUser });
-
-    res.status(200).json({ user: tokenUser });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal server error" });
+  if (!email || !password) {
+    return res.status(400).json({ error: "Please provide email and password" });
   }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return res.status(401).json({ error: "Invalid Credentials" });
+  }
+
+  const isPasswordCorrect = await user.comparePassword(password);
+
+  if (!isPasswordCorrect) {
+    return res.status(401).json({ error: "Invalid Credentials" });
+  }
+
+  // Use the secret key and token expiration from environment variables
+  const secretKey = process.env.JWT_SECRET;
+  const tokenExpiration = process.env.JWT_LIFETIME;
+
+  if (!secretKey || !tokenExpiration) {
+    return res.status(500).json({ error: "Internal server error" });
+  }
+
+  // Define the payload for the JWT
+  const payload = {
+    userId: user._id,
+    email: user.email,
+    Name: user.name,
+    role: user.role,
+  };
+
+  // Generate a JSON Web Token (JWT) with the configured expiration time
+  const token = jwt.sign(payload, secretKey, { expiresIn: tokenExpiration });
+
+  res.status(200).json({
+    user: {
+      _id: user._id,
+      email: user.email,
+      token: token,
+      name: user.name,
+      role: user.role,
+    },
+  });
 };
 
 const logout = async (req, res) => {

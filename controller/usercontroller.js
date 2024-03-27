@@ -59,9 +59,7 @@ const updateUser = async (req, res) => {
 
   // Update user properties if provided in the request body
   if (email) user.email = email;
-  if (fullname) user.fullname = fullname;
-  if (role) user.role = role;
-  if (api_permission) user.api_permission = api_permission;
+  if (name) user.fullname = fullname;
   if (position) user.position = position;
 
   // Save the updated user
