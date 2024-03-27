@@ -1,16 +1,16 @@
 const User = require("../model/user"); // Ensure you import the User model
-const jwt = require('jsonwebtoken')
+
 const { attachCookiesToResponse, createTokenUser } = require("../utils");
 
 const register = async (req, res) => {
   try {
-    const { name ,email, password } = req.body;
+    const { name, email, password } = req.body;
 
     const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
     const passwordRegex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,30}$/;
 
-    if (!name  || !password || !email) {
+    if (!name || !password || !email) {
       return res.status(400).json({ message: "All fields are required" });
     }
     if (!emailRegex.test(email)) {
@@ -34,8 +34,34 @@ const register = async (req, res) => {
       email,
       password,
     });
-    const Users = await user.save(user);
-    res.status(201).json({ Users });
+
+    // Generate a JSON Web Token (JWT)
+    const secretKey = process.env.JWT_SECRET;
+    const tokenExpiration = process.env.JWT_LIFETIME;
+
+    if (!secretKey || !tokenExpiration) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+
+    const payload = {
+      userId: user._id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
+
+    const token = jwt.sign(payload, secretKey, { expiresIn: tokenExpiration });
+
+    // Return user details along with the token
+    res.status(201).json({
+      user: {
+        _id: user._id,
+        email: user.email,
+        token: token, // Include the token in the response
+        name: user.name,
+        role: user.role,
+      },
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal server error" });
